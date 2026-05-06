@@ -25,6 +25,10 @@ document.addEventListener("DOMContentLoaded", () => {
           <p>${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          <p><strong>Participants:</strong></p>
+          <ul class="participants-list">
+            ${details.participants.length > 0 ? details.participants.map(email => `<li>${email} <span class="delete-participant" data-activity="${name}" data-email="${email}">✕</span></li>`).join('') : '<li>No participants yet</li>'}
+          </ul>
         `;
 
         activitiesList.appendChild(activityCard);
@@ -39,6 +43,47 @@ document.addEventListener("DOMContentLoaded", () => {
       activitiesList.innerHTML = "<p>Failed to load activities. Please try again later.</p>";
       console.error("Error fetching activities:", error);
     }
+
+    // Attach delete handlers after populating activities
+    attachDeleteHandlers();
+  }
+
+  // Function to handle participant deletion
+  function handleDeleteParticipant(event) {
+    const activity = event.target.dataset.activity;
+    const email = event.target.dataset.email;
+
+    if (confirm(`Are you sure you want to unregister ${email} from ${activity}?`)) {
+      fetch(`/activities/${encodeURIComponent(activity)}/signup?email=${encodeURIComponent(email)}`, {
+        method: "DELETE",
+      })
+      .then(response => response.json().then(result => ({ response, result })))
+      .then(({ response, result }) => {
+        if (response.ok) {
+          messageDiv.textContent = result.message;
+          messageDiv.className = "success";
+          fetchActivities(); // Refresh the activities list
+        } else {
+          messageDiv.textContent = result.detail || "Failed to unregister";
+          messageDiv.className = "error";
+        }
+        messageDiv.classList.remove("hidden");
+        setTimeout(() => messageDiv.classList.add("hidden"), 5000);
+      })
+      .catch(error => {
+        messageDiv.textContent = "Failed to unregister. Please try again.";
+        messageDiv.className = "error";
+        messageDiv.classList.remove("hidden");
+        console.error("Error unregistering:", error);
+      });
+    }
+  }
+
+  // Attach delete handlers after activities are loaded
+  function attachDeleteHandlers() {
+    document.querySelectorAll('.delete-participant').forEach(span => {
+      span.addEventListener('click', handleDeleteParticipant);
+    });
   }
 
   // Handle form submission
